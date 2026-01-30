@@ -114,4 +114,133 @@ public class ComputusServiceTests
                 $"Easter {year} should be in March or April, but was {easterDate.Month}");
         }
     }
+
+    [Theory]
+    [InlineData(2024, 2, 14)]  // Ash Wednesday 2024 (46 days before March 31)
+    [InlineData(2025, 3, 5)]   // Ash Wednesday 2025 (46 days before April 20)
+    [InlineData(2026, 2, 18)]  // Ash Wednesday 2026 (46 days before April 5)
+    public void CalculateAshWednesday_KnownDates_ReturnsCorrectDate(int year, int month, int day)
+    {
+        // Act
+        var result = _service.CalculateAshWednesday(year);
+
+        // Assert
+        Assert.Equal(new DateTime(year, month, day), result);
+    }
+
+    [Fact]
+    public void CalculateAshWednesday_AlwaysWednesday()
+    {
+        // Ash Wednesday is always on a Wednesday
+        for (int year = 2000; year <= 2030; year++)
+        {
+            // Act
+            var ashWednesday = _service.CalculateAshWednesday(year);
+
+            // Assert
+            Assert.Equal(DayOfWeek.Wednesday, ashWednesday.DayOfWeek);
+        }
+    }
+
+    [Theory]
+    [InlineData(2024, 5, 19)]  // Pentecost 2024 (49 days after March 31)
+    [InlineData(2025, 6, 8)]   // Pentecost 2025 (49 days after April 20)
+    [InlineData(2026, 5, 24)]  // Pentecost 2026 (49 days after April 5)
+    public void CalculatePentecost_KnownDates_ReturnsCorrectDate(int year, int month, int day)
+    {
+        // Act
+        var result = _service.CalculatePentecost(year);
+
+        // Assert
+        Assert.Equal(new DateTime(year, month, day), result);
+    }
+
+    [Fact]
+    public void CalculatePentecost_AlwaysSunday()
+    {
+        // Pentecost is always on a Sunday
+        for (int year = 2000; year <= 2030; year++)
+        {
+            // Act
+            var pentecost = _service.CalculatePentecost(year);
+
+            // Assert
+            Assert.Equal(DayOfWeek.Sunday, pentecost.DayOfWeek);
+        }
+    }
+
+    [Theory]
+    [InlineData(2024, 5, 26)]  // Trinity Sunday 2024 (56 days after March 31)
+    [InlineData(2025, 6, 15)]  // Trinity Sunday 2025 (56 days after April 20)
+    [InlineData(2026, 5, 31)]  // Trinity Sunday 2026 (56 days after April 5)
+    public void CalculateTrinity_KnownDates_ReturnsCorrectDate(int year, int month, int day)
+    {
+        // Act
+        var result = _service.CalculateTrinity(year);
+
+        // Assert
+        Assert.Equal(new DateTime(year, month, day), result);
+    }
+
+    [Fact]
+    public void CalculateTrinity_AlwaysSunday()
+    {
+        // Trinity Sunday is always on a Sunday
+        for (int year = 2000; year <= 2030; year++)
+        {
+            // Act
+            var trinitySunday = _service.CalculateTrinity(year);
+
+            // Assert
+            Assert.Equal(DayOfWeek.Sunday, trinitySunday.DayOfWeek);
+        }
+    }
+
+    [Theory]
+    [InlineData(2024, 3, 25)]
+    [InlineData(2025, 3, 25)]
+    [InlineData(2026, 3, 25)]
+    public void CalculateAnnunciation_AlwaysMarch25(int year, int month, int day)
+    {
+        // Act
+        var result = _service.CalculateAnnunciation(year);
+
+        // Assert
+        Assert.Equal(new DateTime(year, month, day), result);
+    }
+
+    [Fact]
+    public void CalculateAllHolyDays_ReturnsAllFiveHolyDays()
+    {
+        // Arrange
+        int year = 2024;
+
+        // Act
+        var holyDays = _service.CalculateAllHolyDays(year);
+
+        // Assert
+        Assert.Equal(5, holyDays.Count);
+        Assert.True(holyDays.ContainsKey("Easter Sunday"));
+        Assert.True(holyDays.ContainsKey("Ash Wednesday"));
+        Assert.True(holyDays.ContainsKey("Pentecost"));
+        Assert.True(holyDays.ContainsKey("Trinity Sunday"));
+        Assert.True(holyDays.ContainsKey("Annunciation of Mary"));
+    }
+
+    [Fact]
+    public void CalculateAllHolyDays_ReturnsCorrectDatesFor2024()
+    {
+        // Arrange
+        int year = 2024;
+
+        // Act
+        var holyDays = _service.CalculateAllHolyDays(year);
+
+        // Assert
+        Assert.Equal(new DateTime(2024, 3, 31), holyDays["Easter Sunday"]);
+        Assert.Equal(new DateTime(2024, 2, 14), holyDays["Ash Wednesday"]);
+        Assert.Equal(new DateTime(2024, 5, 19), holyDays["Pentecost"]);
+        Assert.Equal(new DateTime(2024, 5, 26), holyDays["Trinity Sunday"]);
+        Assert.Equal(new DateTime(2024, 3, 25), holyDays["Annunciation of Mary"]);
+    }
 }

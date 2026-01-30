@@ -1,7 +1,7 @@
 namespace FreiService.Computus;
 
 /// <summary>
-/// Service that calculates Easter dates using the Meeus/Jones/Butcher algorithm.
+/// Service that calculates Easter dates and related holy days using the Meeus/Jones/Butcher algorithm.
 /// This algorithm is accurate for all Gregorian calendar years (1583 and later).
 /// </summary>
 public class ComputusService : IComputusService
@@ -59,5 +59,70 @@ public class ComputusService : IComputusService
         }
 
         return results;
+    }
+
+    /// <summary>
+    /// Calculates the date of Ash Wednesday for a given year (46 days before Easter).
+    /// </summary>
+    /// <param name="year">The year to calculate Ash Wednesday for.</param>
+    /// <returns>The date of Ash Wednesday.</returns>
+    public DateTime CalculateAshWednesday(int year)
+    {
+        var easter = CalculateEaster(year);
+        return easter.AddDays(-46);
+    }
+
+    /// <summary>
+    /// Calculates the date of Pentecost for a given year.
+    /// Pentecost occurs 49 days after Easter Sunday, which is the 50th day when counting Easter as day 1.
+    /// </summary>
+    /// <param name="year">The year to calculate Pentecost for.</param>
+    /// <returns>The date of Pentecost.</returns>
+    public DateTime CalculatePentecost(int year)
+    {
+        var easter = CalculateEaster(year);
+        return easter.AddDays(49); // 49 days after Easter = 50th day (inclusive of Easter)
+    }
+
+    /// <summary>
+    /// Calculates the date of Trinity Sunday for a given year (56 days after Easter).
+    /// </summary>
+    /// <param name="year">The year to calculate Trinity Sunday for.</param>
+    /// <returns>The date of Trinity Sunday.</returns>
+    public DateTime CalculateTrinity(int year)
+    {
+        var easter = CalculateEaster(year);
+        return easter.AddDays(56);
+    }
+
+    /// <summary>
+    /// Calculates the date of the Annunciation of Mary for a given year (March 25, fixed).
+    /// </summary>
+    /// <param name="year">The year to calculate the Annunciation for.</param>
+    /// <returns>The date of the Annunciation (March 25).</returns>
+    public DateTime CalculateAnnunciation(int year)
+    {
+        if (year < 1583)
+        {
+            throw new ArgumentOutOfRangeException(nameof(year), "Year must be 1583 or later for Gregorian calendar.");
+        }
+        return new DateTime(year, 3, 25);
+    }
+
+    /// <summary>
+    /// Calculates all holy days for a given year.
+    /// </summary>
+    /// <param name="year">The year to calculate holy days for.</param>
+    /// <returns>A dictionary mapping holy day names to their dates.</returns>
+    public Dictionary<string, DateTime> CalculateAllHolyDays(int year)
+    {
+        return new Dictionary<string, DateTime>
+        {
+            { "Easter Sunday", CalculateEaster(year) },
+            { "Ash Wednesday", CalculateAshWednesday(year) },
+            { "Pentecost", CalculatePentecost(year) },
+            { "Trinity Sunday", CalculateTrinity(year) },
+            { "Annunciation of Mary", CalculateAnnunciation(year) }
+        };
     }
 }
