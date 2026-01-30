@@ -78,6 +78,20 @@ dotnet build
 dotnet test
 ```
 
+## Demo Application
+
+A demo console application is available in the `examples/FreiService.Computus.Demo` directory. To run it:
+
+```bash
+cd examples/FreiService.Computus.Demo
+dotnet run
+```
+
+The demo shows:
+- Single year Easter calculation
+- Range calculations for multiple years
+- Example SQL INSERT statements for database seeding
+
 ## Algorithm
 
 The service uses the Meeus/Jones/Butcher algorithm, which is one of the most widely used methods for calculating Easter dates. The algorithm:

@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/examples/">
+    <Project Path="examples/FreiService.Computus.Demo/FreiService.Computus.Demo.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/FreiService.Computus/FreiService.Computus.csproj" />
   </Folder>
