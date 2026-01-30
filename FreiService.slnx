@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FreiService.Computus/FreiService.Computus.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FreiService.Computus.Tests/FreiService.Computus.Tests.csproj" />
+  </Folder>
+</Solution>
