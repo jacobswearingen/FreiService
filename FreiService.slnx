@@ -4,6 +4,7 @@
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/FreiService.Computus/FreiService.Computus.csproj" />
+    <Project Path="src/FreiService.Data/FreiService.Data.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/FreiService.Computus.Tests/FreiService.Computus.Tests.csproj" />
