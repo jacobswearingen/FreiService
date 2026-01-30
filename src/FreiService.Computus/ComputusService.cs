@@ -73,7 +73,8 @@ public class ComputusService : IComputusService
     }
 
     /// <summary>
-    /// Calculates the date of Pentecost for a given year (50 days after Easter).
+    /// Calculates the date of Pentecost for a given year.
+    /// Pentecost occurs 49 days after Easter Sunday, which is the 50th day when counting Easter as day 1.
     /// </summary>
     /// <param name="year">The year to calculate Pentecost for.</param>
     /// <returns>The date of Pentecost.</returns>
