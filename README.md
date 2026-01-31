@@ -45,12 +45,32 @@ Blazor Server web application providing a user-friendly interface for calculatin
 
 ### Running the Web Application
 
+#### Option 1: Using Visual Studio
+
+**Prerequisites:**
+- Visual Studio 2022 (version 17.8 or later)
+- .NET 10.0 SDK
+
+**Steps:**
+1. Open the solution file `FreiService.slnx` in Visual Studio
+2. In the Solution Explorer, right-click on the `FreiService.Web` project and select "Set as Startup Project"
+3. Press `F5` or click the "Start Debugging" button to run the application
+4. The web application will launch in your default browser at:
+   - HTTPS: `https://localhost:7119`
+   - HTTP: `http://localhost:5174`
+
+**Tips:**
+- You can change the launch profile (http/https) in the project properties under Debug > Launch Profiles
+- The SQLite database file (`holydays.db`) will be created automatically in the `FreiService.Web` project directory
+
+#### Option 2: Using .NET CLI
+
 ```bash
 cd src/FreiService.Web
 dotnet run
 ```
 
-Then navigate to `http://localhost:5000` in your browser.
+Then navigate to `http://localhost:5174` or `https://localhost:7119` in your browser.
 
 ### Using the Computus Service Library
 
