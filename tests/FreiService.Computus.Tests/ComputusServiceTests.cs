@@ -219,12 +219,18 @@ public class ComputusServiceTests
         var holyDays = _service.CalculateAllHolyDays(year);
 
         // Assert
-        Assert.Equal(5, holyDays.Count);
+        Assert.Equal(11, holyDays.Count);
         Assert.True(holyDays.ContainsKey("Easter Sunday"));
         Assert.True(holyDays.ContainsKey("Ash Wednesday"));
+        Assert.True(holyDays.ContainsKey("Good Friday"));
+        Assert.True(holyDays.ContainsKey("Ascension Day"));
         Assert.True(holyDays.ContainsKey("Pentecost"));
         Assert.True(holyDays.ContainsKey("Trinity Sunday"));
         Assert.True(holyDays.ContainsKey("Annunciation of Mary"));
+        Assert.True(holyDays.ContainsKey("Christmas"));
+        Assert.True(holyDays.ContainsKey("Epiphany"));
+        Assert.True(holyDays.ContainsKey("Reformation Day"));
+        Assert.True(holyDays.ContainsKey("All Saints' Day"));
     }
 
     [Fact]
@@ -239,8 +245,211 @@ public class ComputusServiceTests
         // Assert
         Assert.Equal(new DateTime(2024, 3, 31), holyDays["Easter Sunday"]);
         Assert.Equal(new DateTime(2024, 2, 14), holyDays["Ash Wednesday"]);
+        Assert.Equal(new DateTime(2024, 3, 29), holyDays["Good Friday"]);
+        Assert.Equal(new DateTime(2024, 5, 9), holyDays["Ascension Day"]);
         Assert.Equal(new DateTime(2024, 5, 19), holyDays["Pentecost"]);
         Assert.Equal(new DateTime(2024, 5, 26), holyDays["Trinity Sunday"]);
         Assert.Equal(new DateTime(2024, 3, 25), holyDays["Annunciation of Mary"]);
+        Assert.Equal(new DateTime(2024, 12, 25), holyDays["Christmas"]);
+        Assert.Equal(new DateTime(2024, 1, 6), holyDays["Epiphany"]);
+        Assert.Equal(new DateTime(2024, 10, 31), holyDays["Reformation Day"]);
+        Assert.Equal(new DateTime(2024, 11, 1), holyDays["All Saints' Day"]);
+    }
+
+    [Theory]
+    [InlineData(2024, 12, 25)]
+    [InlineData(2025, 12, 25)]
+    [InlineData(2026, 12, 25)]
+    public void CalculateChristmas_AlwaysDecember25(int year, int month, int day)
+    {
+        // Act
+        var result = _service.CalculateChristmas(year);
+
+        // Assert
+        Assert.Equal(new DateTime(year, month, day), result);
+    }
+
+    [Theory]
+    [InlineData(2024, 1, 6)]
+    [InlineData(2025, 1, 6)]
+    [InlineData(2026, 1, 6)]
+    public void CalculateEpiphany_AlwaysJanuary6(int year, int month, int day)
+    {
+        // Act
+        var result = _service.CalculateEpiphany(year);
+
+        // Assert
+        Assert.Equal(new DateTime(year, month, day), result);
+    }
+
+    [Theory]
+    [InlineData(2024, 3, 29)]  // Good Friday 2024 (2 days before March 31)
+    [InlineData(2025, 4, 18)]  // Good Friday 2025 (2 days before April 20)
+    [InlineData(2026, 4, 3)]   // Good Friday 2026 (2 days before April 5)
+    public void CalculateGoodFriday_KnownDates_ReturnsCorrectDate(int year, int month, int day)
+    {
+        // Act
+        var result = _service.CalculateGoodFriday(year);
+
+        // Assert
+        Assert.Equal(new DateTime(year, month, day), result);
+    }
+
+    [Fact]
+    public void CalculateGoodFriday_AlwaysFriday()
+    {
+        // Good Friday is always on a Friday
+        for (int year = 2000; year <= 2030; year++)
+        {
+            // Act
+            var goodFriday = _service.CalculateGoodFriday(year);
+
+            // Assert
+            Assert.Equal(DayOfWeek.Friday, goodFriday.DayOfWeek);
+        }
+    }
+
+    [Theory]
+    [InlineData(2024, 5, 9)]   // Ascension 2024 (39 days after March 31)
+    [InlineData(2025, 5, 29)]  // Ascension 2025 (39 days after April 20)
+    [InlineData(2026, 5, 14)]  // Ascension 2026 (39 days after April 5)
+    public void CalculateAscension_KnownDates_ReturnsCorrectDate(int year, int month, int day)
+    {
+        // Act
+        var result = _service.CalculateAscension(year);
+
+        // Assert
+        Assert.Equal(new DateTime(year, month, day), result);
+    }
+
+    [Fact]
+    public void CalculateAscension_AlwaysThursday()
+    {
+        // Ascension is always on a Thursday (40 days after Easter, counting Easter as day 1)
+        for (int year = 2000; year <= 2030; year++)
+        {
+            // Act
+            var ascension = _service.CalculateAscension(year);
+
+            // Assert
+            Assert.Equal(DayOfWeek.Thursday, ascension.DayOfWeek);
+        }
+    }
+
+    [Theory]
+    [InlineData(2024, 10, 31)]
+    [InlineData(2025, 10, 31)]
+    [InlineData(2026, 10, 31)]
+    public void CalculateReformationDay_AlwaysOctober31(int year, int month, int day)
+    {
+        // Act
+        var result = _service.CalculateReformationDay(year);
+
+        // Assert
+        Assert.Equal(new DateTime(year, month, day), result);
+    }
+
+    [Theory]
+    [InlineData(2024, 11, 1)]
+    [InlineData(2025, 11, 1)]
+    [InlineData(2026, 11, 1)]
+    public void CalculateAllSaintsDay_AlwaysNovember1(int year, int month, int day)
+    {
+        // Act
+        var result = _service.CalculateAllSaintsDay(year);
+
+        // Assert
+        Assert.Equal(new DateTime(year, month, day), result);
+    }
+
+    [Fact]
+    public void GetChurchSeason_Advent_ReturnsAdvent()
+    {
+        // First Sunday of Advent 2024 is December 1
+        var date = new DateTime(2024, 12, 1);
+
+        // Act
+        var season = _service.GetChurchSeason(date, 2024);
+
+        // Assert
+        Assert.Equal(ChurchSeason.Advent, season);
+    }
+
+    [Fact]
+    public void GetChurchSeason_Christmas_ReturnsChristmas()
+    {
+        // December 25 is Christmas
+        var date = new DateTime(2024, 12, 25);
+
+        // Act
+        var season = _service.GetChurchSeason(date, 2024);
+
+        // Assert
+        Assert.Equal(ChurchSeason.Christmas, season);
+    }
+
+    [Fact]
+    public void GetChurchSeason_Epiphany_ReturnsEpiphany()
+    {
+        // January 6 is Epiphany
+        var date = new DateTime(2024, 1, 6);
+
+        // Act
+        var season = _service.GetChurchSeason(date, 2024);
+
+        // Assert
+        Assert.Equal(ChurchSeason.Epiphany, season);
+    }
+
+    [Fact]
+    public void GetChurchSeason_Lent_ReturnsLent()
+    {
+        // Ash Wednesday 2024 is February 14
+        var date = new DateTime(2024, 2, 14);
+
+        // Act
+        var season = _service.GetChurchSeason(date, 2024);
+
+        // Assert
+        Assert.Equal(ChurchSeason.Lent, season);
+    }
+
+    [Fact]
+    public void GetChurchSeason_Easter_ReturnsEaster()
+    {
+        // Easter Sunday 2024 is March 31
+        var date = new DateTime(2024, 3, 31);
+
+        // Act
+        var season = _service.GetChurchSeason(date, 2024);
+
+        // Assert
+        Assert.Equal(ChurchSeason.Easter, season);
+    }
+
+    [Fact]
+    public void GetChurchSeason_Pentecost_ReturnsPentecost()
+    {
+        // Pentecost 2024 is May 19
+        var date = new DateTime(2024, 5, 19);
+
+        // Act
+        var season = _service.GetChurchSeason(date, 2024);
+
+        // Assert
+        Assert.Equal(ChurchSeason.Pentecost, season);
+    }
+
+    [Fact]
+    public void GetChurchSeason_MidSummer_ReturnsPentecost()
+    {
+        // July 4, 2024 should be in Pentecost/Trinity season
+        var date = new DateTime(2024, 7, 4);
+
+        // Act
+        var season = _service.GetChurchSeason(date, 2024);
+
+        // Assert
+        Assert.Equal(ChurchSeason.Pentecost, season);
     }
 }

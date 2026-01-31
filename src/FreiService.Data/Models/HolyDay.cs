@@ -41,6 +41,12 @@ public class HolyDay
     public string? Description { get; set; }
 
     /// <summary>
+    /// Indicates whether this holy day is static (fixed date) or part of the sanctoral calendar (calculated based on Easter).
+    /// </summary>
+    [Required]
+    public HolyDayType Type { get; set; } = HolyDayType.Sanctoral;
+
+    /// <summary>
     /// When this record was created.
     /// </summary>
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
