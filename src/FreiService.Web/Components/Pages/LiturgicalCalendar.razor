@@ -1,0 +1,241 @@
+@page "/calendar"
+@using FreiService.Computus
+@rendermode InteractiveServer
+@inject ITemporalService TemporalService
+
+<PageTitle>Liturgical Calendar</PageTitle>
+
+<h1>Liturgical Calendar</h1>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Season Dates and Information</h4>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="yearInput" class="form-label">Year:</label>
+                    <input type="number" 
+                           class="form-control" 
+                           id="yearInput" 
+                           @bind="selectedYear" 
+                           min="1583" 
+                           max="9999" 
+                           style="max-width: 200px;" />
+                </div>
+                <button class="btn btn-primary" @onclick="LoadSeasonInfo">
+                    <i class="bi bi-calendar-range"></i> Calculate Season Dates
+                </button>
+            </div>
+        </div>
+
+        @if (seasonInfo != null)
+        {
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Liturgical Seasons for @selectedYear</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Season</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>Weeks/Duration</th>
+                                <th>Color</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var season in seasonInfo)
+                            {
+                                <tr>
+                                    <td><strong>@season.SeasonName</strong></td>
+                                    <td>@season.StartDate.ToString("MMMM dd, yyyy (dddd)")</td>
+                                    <td>@season.EndDate.ToString("MMMM dd, yyyy (dddd)")</td>
+                                    <td>@season.DurationInfo</td>
+                                    <td>
+                                        <span class="badge" style="background-color: @GetColorBadge(season.PrimaryColor)">
+                                            @season.PrimaryColor
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+
+                    <div class="mt-4">
+                        <h6>Key Information:</h6>
+                        <ul class="list-group">
+                            <li class="list-group-item">
+                                <strong>Easter Sunday:</strong> @easterDate?.ToString("MMMM dd, yyyy")
+                            </li>
+                            <li class="list-group-item">
+                                <strong>Sundays after Epiphany:</strong> @epiphanySundayCount
+                            </li>
+                            <li class="list-group-item">
+                                <strong>Sundays after Trinity:</strong> @trinitySundayCount
+                            </li>
+                        </ul>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(message))
+                    {
+                        <div class="alert @messageClass mt-3" role="alert">
+                            @message
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private int selectedYear = DateTime.Now.Year;
+    private List<SeasonInfo>? seasonInfo;
+    private DateTime? easterDate;
+    private int epiphanySundayCount;
+    private int trinitySundayCount;
+    private string? message;
+    private string messageClass = "alert-info";
+
+    private class SeasonInfo
+    {
+        public string SeasonName { get; set; } = "";
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public string DurationInfo { get; set; } = "";
+        public string PrimaryColor { get; set; } = "";
+    }
+
+    private void LoadSeasonInfo()
+    {
+        try
+        {
+            message = null;
+            seasonInfo = new List<SeasonInfo>();
+            
+            var moveableFeasts = TemporalService.CalculateAllMoveableFeasts(selectedYear);
+            easterDate = TemporalService.CalculateEaster(selectedYear);
+            var advent1 = TemporalService.CalculateAdvent1(selectedYear);
+            epiphanySundayCount = TemporalService.GetEpiphanySundayCount(selectedYear);
+            trinitySundayCount = TemporalService.GetTrinitySundayCount(selectedYear);
+
+            // Advent (from Advent 1 to Christmas Eve)
+            var christmas = new DateTime(selectedYear, 12, 25);
+            seasonInfo.Add(new SeasonInfo
+            {
+                SeasonName = "Advent",
+                StartDate = advent1,
+                EndDate = christmas.AddDays(-1),
+                DurationInfo = "4 Sundays",
+                PrimaryColor = "Violet"
+            });
+
+            // Christmas (Dec 25 - Jan 5)
+            var christmasEnd = new DateTime(selectedYear + 1, 1, 5);
+            seasonInfo.Add(new SeasonInfo
+            {
+                SeasonName = "Christmas",
+                StartDate = christmas,
+                EndDate = christmasEnd,
+                DurationInfo = "12 Days",
+                PrimaryColor = "White"
+            });
+
+            // Epiphany (Jan 6 to day before Septuagesima)
+            var epiphany = new DateTime(selectedYear, 1, 6);
+            var septuagesima = moveableFeasts["Septuagesima Sunday"];
+            seasonInfo.Add(new SeasonInfo
+            {
+                SeasonName = "Epiphany",
+                StartDate = epiphany,
+                EndDate = septuagesima.AddDays(-1),
+                DurationInfo = $"{epiphanySundayCount} Sundays after Epiphany",
+                PrimaryColor = "Green/White"
+            });
+
+            // Septuagesima (3 Sundays before Ash Wednesday)
+            var ashWednesday = moveableFeasts["Ash Wednesday"];
+            seasonInfo.Add(new SeasonInfo
+            {
+                SeasonName = "Septuagesima",
+                StartDate = septuagesima,
+                EndDate = ashWednesday.AddDays(-1),
+                DurationInfo = "3 Sundays (Pre-Lent)",
+                PrimaryColor = "Violet"
+            });
+
+            // Lent (Ash Wednesday to Saturday before Palm Sunday)
+            var palmSunday = moveableFeasts["Palmarum (Palm Sunday)"];
+            seasonInfo.Add(new SeasonInfo
+            {
+                SeasonName = "Lent",
+                StartDate = ashWednesday,
+                EndDate = palmSunday.AddDays(-1),
+                DurationInfo = "5 Sundays + Ash Wednesday",
+                PrimaryColor = "Violet"
+            });
+
+            // Holy Week (Palm Sunday to Holy Saturday)
+            var holySaturday = moveableFeasts["Holy Saturday"];
+            seasonInfo.Add(new SeasonInfo
+            {
+                SeasonName = "Holy Week",
+                StartDate = palmSunday,
+                EndDate = holySaturday,
+                DurationInfo = "7 Days",
+                PrimaryColor = "Violet/Black"
+            });
+
+            // Easter (Easter Sunday to day before Pentecost)
+            var pentecost = moveableFeasts["Pentecost (Whitsunday)"];
+            seasonInfo.Add(new SeasonInfo
+            {
+                SeasonName = "Easter",
+                StartDate = easterDate.Value,
+                EndDate = pentecost.AddDays(-1),
+                DurationInfo = "6 Sundays after Easter + Ascension",
+                PrimaryColor = "White"
+            });
+
+            // Trinity (Pentecost to day before Advent)
+            var nextAdvent1 = TemporalService.CalculateAdvent1(selectedYear);
+            seasonInfo.Add(new SeasonInfo
+            {
+                SeasonName = "Trinity (After Pentecost)",
+                StartDate = pentecost,
+                EndDate = nextAdvent1.AddDays(-1),
+                DurationInfo = $"{trinitySundayCount} Sundays after Trinity",
+                PrimaryColor = "Green"
+            });
+        }
+        catch (Exception ex)
+        {
+            message = $"Error calculating season dates: {ex.Message}";
+            messageClass = "alert-danger";
+        }
+    }
+
+    private string GetColorBadge(string color)
+    {
+        return color.ToLower() switch
+        {
+            "white" => "#f8f9fa; color: #212529;",
+            "red" => "#dc3545; color: white;",
+            "violet" => "#6f42c1; color: white;",
+            "black" => "#212529; color: white;",
+            "green" => "#198754; color: white;",
+            "green/white" => "linear-gradient(90deg, #198754 50%, #f8f9fa 50%); color: #212529;",
+            "violet/black" => "linear-gradient(90deg, #6f42c1 50%, #212529 50%); color: white;",
+            _ => "#6c757d; color: white;"
+        };
+    }
+
+    protected override void OnInitialized()
+    {
+        LoadSeasonInfo();
+    }
+}

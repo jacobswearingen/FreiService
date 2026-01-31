@@ -18,9 +18,13 @@ builder.Services.AddDbContext<HolyDaysContext>(options =>
 
 // Register services
 builder.Services.AddScoped<IComputusService, ComputusService>();
+builder.Services.AddScoped<ITemporalService, TemporalService>();
 builder.Services.AddScoped<IHolyDaysRepository, HolyDaysRepository>();
 builder.Services.AddScoped<IHolyDayDefinitionsRepository, HolyDayDefinitionsRepository>();
+builder.Services.AddScoped<ISanctoralDaysRepository, SanctoralDaysRepository>();
 builder.Services.AddScoped<IHolyDaysService, HolyDaysService>();
+builder.Services.AddScoped<ISanctoralService, SanctoralService>();
+builder.Services.AddScoped<IPrecedenceService, PrecedenceService>();
 
 var app = builder.Build();
 
