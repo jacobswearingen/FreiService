@@ -226,8 +226,9 @@ public class ComputusService : IComputusService
         var pentecost = CalculatePentecost(year);
 
         // Calculate first Sunday of Advent (4 Sundays before Christmas)
+        // Advent begins on the Sunday that is 22-28 days before Christmas
         var adventStart = christmas;
-        while (adventStart.DayOfWeek != DayOfWeek.Sunday || (christmas - adventStart).Days < 22)
+        while (adventStart.DayOfWeek != DayOfWeek.Sunday || (christmas - adventStart).Days <= 21)
         {
             adventStart = adventStart.AddDays(-1);
         }
@@ -277,7 +278,7 @@ public class ComputusService : IComputusService
         // or we need to check against next year's Advent
         var nextYearChristmas = CalculateChristmas(year + 1);
         var nextAdventStart = nextYearChristmas;
-        while (nextAdventStart.DayOfWeek != DayOfWeek.Sunday || (nextYearChristmas - nextAdventStart).Days < 22)
+        while (nextAdventStart.DayOfWeek != DayOfWeek.Sunday || (nextYearChristmas - nextAdventStart).Days <= 21)
         {
             nextAdventStart = nextAdventStart.AddDays(-1);
         }
