@@ -11,16 +11,22 @@ public class HolyDaysService : IHolyDaysService
 {
     private readonly IComputusService _computusService;
     private readonly IHolyDaysRepository _repository;
+    private readonly IHolyDayDefinitionsRepository _definitionsRepository;
 
     /// <summary>
     /// Initializes a new instance of the HolyDaysService class.
     /// </summary>
     /// <param name="computusService">The Computus service for calculating dates.</param>
     /// <param name="repository">The repository for data access.</param>
-    public HolyDaysService(IComputusService computusService, IHolyDaysRepository repository)
+    /// <param name="definitionsRepository">The repository for holy day definitions.</param>
+    public HolyDaysService(
+        IComputusService computusService, 
+        IHolyDaysRepository repository,
+        IHolyDayDefinitionsRepository definitionsRepository)
     {
         _computusService = computusService;
         _repository = repository;
+        _definitionsRepository = definitionsRepository;
     }
 
     /// <summary>
@@ -105,5 +111,86 @@ public class HolyDaysService : IHolyDaysService
     public async Task<int> DeleteHolyDaysByYearAsync(int year)
     {
         return await _repository.DeleteHolyDaysByYearAsync(year);
+    }
+
+    /// <summary>
+    /// Calculates and saves holy days for a year including custom holy day definitions.
+    /// </summary>
+    /// <param name="year">The year to calculate and save holy days for.</param>
+    /// <param name="includeCustomDefinitions">Whether to include custom holy day definitions.</param>
+    /// <returns>The list of saved holy days.</returns>
+    public async Task<List<HolyDay>> SaveHolyDaysForYearWithCustomAsync(int year, bool includeCustomDefinitions = true)
+    {
+        // Calculate the built-in holy days
+        var calculatedHolyDays = _computusService.CalculateAllHolyDays(year);
+
+        // Define which holy days are static vs sanctoral
+        var staticHolyDays = new HashSet<string>
+        {
+            "Annunciation of Mary",
+            "Christmas",
+            "Epiphany",
+            "Reformation Day",
+            "All Saints' Day"
+        };
+
+        // Convert to database entities
+        var holyDays = calculatedHolyDays.Select(kvp => new HolyDay
+        {
+            Name = kvp.Key,
+            Year = year,
+            Date = kvp.Value,
+            Type = staticHolyDays.Contains(kvp.Key) ? HolyDayType.Static : HolyDayType.Sanctoral
+        }).ToList();
+
+        // Add custom holy days if requested
+        if (includeCustomDefinitions)
+        {
+            var customDefinitions = await _definitionsRepository.GetAllDefinitionsAsync();
+            var easter = _computusService.CalculateEaster(year);
+
+            foreach (var definition in customDefinitions)
+            {
+                DateTime date;
+                if (definition.Type == HolyDayType.Static)
+                {
+                    // Static holy day - use month and day
+                    if (definition.Month.HasValue && definition.Day.HasValue)
+                    {
+                        date = new DateTime(year, definition.Month.Value, definition.Day.Value);
+                    }
+                    else
+                    {
+                        continue; // Skip invalid definitions
+                    }
+                }
+                else
+                {
+                    // Sanctoral holy day - calculate from Easter
+                    if (definition.DaysFromEaster.HasValue)
+                    {
+                        date = easter.AddDays(definition.DaysFromEaster.Value);
+                    }
+                    else
+                    {
+                        continue; // Skip invalid definitions
+                    }
+                }
+
+                holyDays.Add(new HolyDay
+                {
+                    Name = definition.Name,
+                    Year = year,
+                    Date = date,
+                    Type = definition.Type,
+                    Description = definition.Description
+                });
+            }
+        }
+
+        // Save to database
+        await _repository.AddHolyDaysAsync(holyDays);
+
+        return holyDays;
     }
 }

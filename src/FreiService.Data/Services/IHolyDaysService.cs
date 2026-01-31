@@ -49,4 +49,12 @@ public interface IHolyDaysService
     /// <param name="year">The year to delete holy days for.</param>
     /// <returns>The number of holy days deleted.</returns>
     Task<int> DeleteHolyDaysByYearAsync(int year);
+
+    /// <summary>
+    /// Calculates and saves holy days for a year including custom holy day definitions.
+    /// </summary>
+    /// <param name="year">The year to calculate and save holy days for.</param>
+    /// <param name="includeCustomDefinitions">Whether to include custom holy day definitions.</param>
+    /// <returns>The list of saved holy days.</returns>
+    Task<List<HolyDay>> SaveHolyDaysForYearWithCustomAsync(int year, bool includeCustomDefinitions = true);
 }

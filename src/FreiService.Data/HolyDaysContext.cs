@@ -14,6 +14,11 @@ public class HolyDaysContext : DbContext
     public DbSet<HolyDay> HolyDays { get; set; } = null!;
 
     /// <summary>
+    /// Gets or sets the HolyDayDefinitions DbSet.
+    /// </summary>
+    public DbSet<HolyDayDefinition> HolyDayDefinitions { get; set; } = null!;
+
+    /// <summary>
     /// Initializes a new instance of the HolyDaysContext class.
     /// </summary>
     /// <param name="options">The options to be used by the DbContext.</param>
@@ -41,6 +46,14 @@ public class HolyDaysContext : DbContext
 
             // Create an index on Date for date-based queries
             entity.HasIndex(e => e.Date);
+        });
+
+        // Configure HolyDayDefinition entity
+        modelBuilder.Entity<HolyDayDefinition>(entity =>
+        {
+            // Create a unique index on Name to prevent duplicate definitions
+            entity.HasIndex(e => e.Name)
+                  .IsUnique();
         });
     }
 }
