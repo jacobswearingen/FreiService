@@ -1,0 +1,74 @@
+﻿@page "/"
+
+<PageTitle>FreiService - Holy Days Calculator</PageTitle>
+
+<h1>FreiService - Holy Days Manager</h1>
+
+<div class="row mt-4">
+    <div class="col-md-8">
+        <p class="lead">
+            Welcome to the FreiService Holy Days Manager - a comprehensive tool for calculating and managing 
+            Christian liturgical calendar dates.
+        </p>
+
+        <h2 class="mt-4">Features</h2>
+        <ul class="list-group mb-4">
+            <li class="list-group-item">
+                <strong>🗓️ Calculate Holy Days</strong> - Compute Easter and related movable feasts using the 
+                Meeus/Jones/Butcher algorithm
+            </li>
+            <li class="list-group-item">
+                <strong>👁️ Dry Run</strong> - Preview holy days for any year before committing to the database
+            </li>
+            <li class="list-group-item">
+                <strong>💾 Save to Database</strong> - Store calculated holy days in SQLite for future reference
+            </li>
+            <li class="list-group-item">
+                <strong>📋 Manage Data</strong> - View, update, or delete saved holy days by year
+            </li>
+        </ul>
+
+        <h2 class="mt-4">Supported Holy Days</h2>
+        <div class="row">
+            <div class="col-md-6">
+                <ul>
+                    <li><strong>Easter Sunday</strong> - The principal feast of the Christian calendar</li>
+                    <li><strong>Ash Wednesday</strong> - First day of Lent (46 days before Easter)</li>
+                    <li><strong>Pentecost</strong> - 50 days after Easter</li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <ul>
+                    <li><strong>Trinity Sunday</strong> - First Sunday after Pentecost</li>
+                    <li><strong>Annunciation of Mary</strong> - March 25 (fixed date)</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="alert alert-info mt-4" role="alert">
+            <strong>💡 Getting Started:</strong> Navigate to the <a href="/holydays" class="alert-link">Holy Days Manager</a> 
+            to begin calculating and managing holy days for any year from 1583 onwards.
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card bg-light">
+            <div class="card-body">
+                <h5 class="card-title">Quick Facts</h5>
+                <dl>
+                    <dt>Algorithm</dt>
+                    <dd>Meeus/Jones/Butcher</dd>
+                    
+                    <dt>Valid Range</dt>
+                    <dd>1583 - 9999</dd>
+                    
+                    <dt>Database</dt>
+                    <dd>SQLite</dd>
+                    
+                    <dt>Precision</dt>
+                    <dd>100% accurate for Gregorian calendar</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
