@@ -153,4 +153,89 @@ void get_chapter(struct mg_connection *c, struct mg_http_message *hm) {
 }
 
 void get_passage(struct mg_connection *c, struct mg_http_message *hm) {
-};
+    int book = 0, start_chapter = 0, start_verse = 0, end_chapter = 0, end_verse = 0;
+    char sql[512];
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    int rc;
+
+    // Parse JSON body: expect {"book":1, "start_chapter":1, "start_verse":1, "end_chapter":1, "end_verse":1}
+    double dbook = 0, dstart_ch = 0, dstart_vs = 0, dend_ch = 0, dend_vs = 0;
+    if (!mg_json_get_num(hm->body, "$.book", &dbook) ||
+        !mg_json_get_num(hm->body, "$.start_chapter", &dstart_ch) ||
+        !mg_json_get_num(hm->body, "$.start_verse", &dstart_vs) ||
+        !mg_json_get_num(hm->body, "$.end_chapter", &dend_ch) ||
+        !mg_json_get_num(hm->body, "$.end_verse", &dend_vs)) {
+        mg_http_reply(c, 400, "", "Invalid JSON: expected book, start_chapter, start_verse, end_chapter, end_verse\n");
+        return;
+    }
+    book = (int)dbook;
+    start_chapter = (int)dstart_ch;
+    start_verse = (int)dstart_vs;
+    end_chapter = (int)dend_ch;
+    end_verse = (int)dend_vs;
+
+    rc = sqlite3_open(DB_PATH, &db);
+    if (rc != SQLITE_OK) {
+        mg_http_reply(c, 500, "", "DB open error\n");
+        return;
+    }
+
+    // SQL: select all verses in the range (inclusive)
+    mg_snprintf(sql, sizeof(sql),
+        "SELECT chapter, verse, text FROM kjv WHERE book=? AND ((chapter > ? OR (chapter = ? AND verse >= ?)) AND (chapter < ? OR (chapter = ? AND verse <= ?))) ORDER BY chapter ASC, verse ASC");
+
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, 0);
+    if (rc != SQLITE_OK) {
+        mg_http_reply(c, 500, "", "DB prepare error\n");
+        sqlite3_close(db);
+        return;
+    }
+
+    sqlite3_bind_int(stmt, 1, book);
+    sqlite3_bind_int(stmt, 2, start_chapter);
+    sqlite3_bind_int(stmt, 3, start_chapter);
+    sqlite3_bind_int(stmt, 4, start_verse);
+    sqlite3_bind_int(stmt, 5, end_chapter);
+    sqlite3_bind_int(stmt, 6, end_chapter);
+    sqlite3_bind_int(stmt, 7, end_verse);
+
+    char esc_text[1024];
+    char *json = NULL, *tmp = NULL;
+    int first = 1, error = 0;
+
+    json = mg_mprintf("{ \"book\": %d, \"start_chapter\": %d, \"start_verse\": %d, \"end_chapter\": %d, \"end_verse\": %d, \"verses\": [", book, start_chapter, start_verse, end_chapter, end_verse);
+    if (!json) error = 1;
+
+    while (!error && sqlite3_step(stmt) == SQLITE_ROW) {
+        int chapter = sqlite3_column_int(stmt, 0);
+        int verse = sqlite3_column_int(stmt, 1);
+        const unsigned char *text = sqlite3_column_text(stmt, 2);
+        json_escape((const char *)text, esc_text, sizeof(esc_text));
+        tmp = mg_mprintf(first ? "%s{ \"chapter\": %d, \"verse\": %d, \"text\": \"%s\" }"
+                                 : "%s, { \"chapter\": %d, \"verse\": %d, \"text\": \"%s\" }",
+                        json, chapter, verse, esc_text);
+        free(json);
+        if (!tmp) error = 1;
+        json = tmp;
+        first = 0;
+    }
+
+    char *final_json = NULL;
+    if (!error) final_json = mg_mprintf("%s]}\n", json);
+    free(json);
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+
+    if (error || !final_json) {
+        if (final_json) free(final_json);
+        mg_http_reply(c, 500, "", "Out of memory\n");
+    } else if (first) {
+        free(final_json);
+        mg_http_reply(c, 404, "", "Passage not found\n");
+    } else {
+        mg_http_reply(c, 200, "Content-Type: application/json\r\n", "%s", final_json);
+        free(final_json);
+    }
+}
