@@ -117,11 +117,16 @@
             message = null;
             seasonInfo = new List<SeasonInfo>();
             
-            var moveableFeasts = TemporalService.CalculateAllMoveableFeasts(selectedYear);
-            easterDate = TemporalService.CalculateEaster(selectedYear);
+            // When user selects a year, we show the liturgical year that BEGINS with Advent in that year
+            // The liturgical year spans from Advent (Nov/Dec of selectedYear) through Trinity season
+            // ending just before Advent of the next year
+            
+            // Advent is in selectedYear, but Easter and most other feasts are in selectedYear + 1
+            var moveableFeasts = TemporalService.CalculateAllMoveableFeasts(selectedYear + 1);
+            easterDate = TemporalService.CalculateEaster(selectedYear + 1);
             var advent1 = TemporalService.CalculateAdvent1(selectedYear);
-            epiphanySundayCount = TemporalService.GetEpiphanySundayCount(selectedYear);
-            trinitySundayCount = TemporalService.GetTrinitySundayCount(selectedYear);
+            epiphanySundayCount = TemporalService.GetEpiphanySundayCount(selectedYear + 1);
+            trinitySundayCount = TemporalService.GetTrinitySundayCount(selectedYear + 1);
 
             // Advent (from Advent 1 to Christmas Eve)
             var christmas = new DateTime(selectedYear, 12, 25);
@@ -134,7 +139,7 @@
                 PrimaryColor = "Violet"
             });
 
-            // Christmas (Dec 25 - Jan 5)
+            // Christmas (Dec 25 - Jan 5 of following year)
             var christmasEnd = new DateTime(selectedYear + 1, 1, 5);
             seasonInfo.Add(new SeasonInfo
             {
@@ -145,8 +150,8 @@
                 PrimaryColor = "White"
             });
 
-            // Epiphany (Jan 6 to day before Septuagesima)
-            var epiphany = new DateTime(selectedYear, 1, 6);
+            // Epiphany (Jan 6 of following year to day before Septuagesima)
+            var epiphany = new DateTime(selectedYear + 1, 1, 6);
             var septuagesima = moveableFeasts["Septuagesima Sunday"];
             seasonInfo.Add(new SeasonInfo
             {
@@ -201,8 +206,8 @@
                 PrimaryColor = "White"
             });
 
-            // Trinity (Pentecost to day before Advent)
-            var nextAdvent1 = TemporalService.CalculateAdvent1(selectedYear);
+            // Trinity (Pentecost to day before Advent of NEXT liturgical year)
+            var nextAdvent1 = TemporalService.CalculateAdvent1(selectedYear + 1);
             seasonInfo.Add(new SeasonInfo
             {
                 SeasonName = "Trinity (After Pentecost)",
