@@ -1,0 +1,21 @@
+meta {
+  name: get_passage
+  type: http
+  seq: 3
+}
+
+get {
+  url: 0.0.0.0:8000/kjv/get_passage
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "book": 19,
+    "start_chapter": 1,
+    "start_verse":1,
+    "end_chapter":1,
+    "end_verse":1
+  }
+}
