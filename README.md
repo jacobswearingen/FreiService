@@ -1,45 +1,110 @@
-# FreiService - Holy Days Management System
+# FreiService - TLH Liturgical Calendar System
 
-A comprehensive C# application for calculating and managing Christian liturgical calendar dates using the Meeus/Jones/Butcher computus algorithm.
+A comprehensive C# application for managing the complete liturgical calendar according to The Lutheran Hymnal (TLH, 1941) tradition, including computus calculations, sanctoral commemorations, and precedence resolution.
 
 ## Overview
 
-FreiService provides a complete solution for calculating Easter and related movable feasts, storing them in a SQLite database, and managing them through an intuitive web interface. This is particularly useful for:
-- Church calendar planning
-- Religious holiday management
+FreiService provides a complete three-service architecture for the liturgical calendar:
+- **TemporalService**: Calculates all moveable feasts based on Easter (Temporale)
+- **SanctoralService**: Manages fixed commemorations tied to calendar dates (Sanctorale)
+- **PrecedenceService**: Resolves conflicts between Temporal and Sanctoral observances
+
+This is particularly useful for:
+- Church calendar planning and liturgy preparation
+- Confessional Lutheran parishes following TLH tradition
 - Liturgical software development
-- Database seeding for multi-year calendars
+- Religious education and catechesis
 
 ## Projects
 
 ### FreiService.Computus
-Core library for calculating Easter dates and related holy days using the Meeus/Jones/Butcher algorithm.
+Core library for calculating Easter dates and the complete Temporale cycle using the Meeus/Jones/Butcher algorithm. Now includes:
+- All TLH moveable feasts (Septuagesima through Trinity Sundays)
+- Season determination with liturgical colors
+- Advent and Epiphany calculations
+- Support for up to 27 Sundays after Trinity
 
 ### FreiService.Data
-Data access layer with SQLite database support for storing and managing holy days.
+Data access layer with Entity Framework Core support for:
+- Sanctoral calendar storage (saints' days, feasts, apostles)
+- Pre-populated TLH sanctoral calendar (30+ commemorations)
+- CRUD operations for custom sanctoral days
+- Precedence resolution service
 
 ### FreiService.Web
 Blazor Server web application providing a user-friendly interface for calculating and managing holy days.
 
 ## Features
 
-- **🗓️ Multiple Holy Days**: Calculate Easter Sunday, Ash Wednesday, Pentecost, Trinity Sunday, and Annunciation of Mary
-- **👁️ Dry Run Preview**: Preview calculated holy days before committing to the database
-- **💾 SQLite Storage**: Persistent storage with Entity Framework Core
-- **🌐 Web Interface**: Modern, responsive Blazor Server UI
-- **✅ Validation**: Prevents duplicate entries and provides overwrite options
-- **📊 Accurate Algorithm**: Uses the Meeus/Jones/Butcher algorithm, accurate for all Gregorian calendar years (1583 onwards)
-- **🧪 Well-Tested**: Comprehensive test suite with known dates from various years
+- **🗓️ Complete Temporale**: All moveable feasts from Septuagesima through Trinity Sundays
+- **📅 Sanctoral Calendar**: Pre-populated with TLH commemorations (apostles, evangelists, martyrs, feasts)
+- **⚖️ Precedence Resolution**: Lutheran precedence rules for resolving Temporal/Sanctoral conflicts
+- **🎨 Liturgical Colors**: White, Red, Violet, Black, Green based on season and observance
+- **📊 Accurate Algorithm**: Meeus/Jones/Butcher computus, accurate for all Gregorian calendar years (1583+)
+- **✝️ TLH Tradition**: Faithful to The Lutheran Hymnal (1941) liturgical calendar
+- **🧪 Well-Tested**: 82+ tests covering calculations, precedence, and edge cases
+- **💾 Database Support**: SQLite/SQL Server storage for sanctoral days and custom additions
 
-## Supported Holy Days
+## Liturgical Calendar System
 
-| Holy Day | Calculation Method |
-|----------|-------------------|
-| **Easter Sunday** | Meeus/Jones/Butcher algorithm |
-| **Ash Wednesday** | 46 days before Easter |
-| **Pentecost** | 49 days after Easter (50th day inclusive) |
-| **Trinity Sunday** | 56 days after Easter (first Sunday after Pentecost) |
-| **Annunciation of Mary** | Fixed date: March 25 |
+### Temporale (Moveable Cycle)
+
+The TemporalService calculates all dates based on Easter:
+
+| Period | Observances |
+|--------|-------------|
+| **Pre-Lent** | Septuagesima, Sexagesima, Quinquagesima |
+| **Lent** | Ash Wednesday, Invocabit through Judica (Lent 1-5) |
+| **Holy Week** | Palm Sunday, Maundy Thursday, Good Friday, Holy Saturday |
+| **Easter** | Easter Sunday, Quasimodogeniti through Exaudi (Easter 1-6) |
+| **Post-Easter** | Ascension (Thursday), Pentecost, Whit-Monday, Whit-Tuesday |
+| **Trinity** | Trinity Sunday, Trinity 1-27 (variable based on Easter date) |
+| **Advent** | Advent 1-4 (4 Sundays before Christmas) |
+| **Christmas** | Christmas Day, Christmas 1-2 |
+| **Epiphany** | Epiphany Day, Epiphany 1-6, Transfiguration |
+
+### Sanctorale (Fixed Commemorations)
+
+Pre-populated with The Lutheran Hymnal (TLH) calendar:
+
+| Date | Commemoration | Rank |
+|------|---------------|------|
+| Nov 30 | St. Andrew, Apostle | Apostle |
+| Dec 21 | St. Thomas, Apostle | Apostle |
+| Dec 25 | The Nativity of Our Lord | Principal Feast |
+| Dec 26 | St. Stephen, Martyr | Lesser Feast |
+| Dec 27 | St. John, Apostle and Evangelist | Apostle |
+| Jan 1 | Circumcision and Name of Jesus | Feast |
+| Jan 6 | The Epiphany of Our Lord | Principal Feast |
+| Jan 18 | The Confession of St. Peter | Lesser Feast |
+| Jan 25 | The Conversion of St. Paul | Apostle |
+| Feb 2 | The Purification of Mary (Candlemas) | Feast |
+| Feb 24 | St. Matthias, Apostle | Apostle |
+| Mar 25 | The Annunciation | Feast |
+| ... | *(30+ total commemorations)* | ... |
+| Oct 31 | Reformation Day | Feast |
+| Nov 1 | All Saints' Day | Feast |
+
+### Precedence Rules
+
+The PrecedenceService applies Lutheran (TLH) precedence rules:
+
+1. **Principal Feasts** always take precedence (Christmas, Easter, Epiphany, Ascension, Pentecost, Trinity)
+2. **Holy Week** temporal always wins, no commemorations
+3. **Sundays** generally take precedence over saints' days
+4. **Feast-rank sanctoral** days may be observed even on Sundays (e.g., Reformation)
+5. **Weekdays with Apostle/Feast** sanctoral days: sanctoral wins
+6. **Lesser feasts** on weekdays: sanctoral wins
+7. **Commemorations**: Displaced observances noted but not celebrated
+
+### Liturgical Colors
+
+Colors follow TLH tradition:
+- **White**: Christmas, Epiphany, Easter, Trinity Sunday, Christ-centered feasts
+- **Red**: Pentecost, Reformation, Apostles/Martyrs
+- **Violet**: Advent, Lent, Septuagesima
+- **Black**: Good Friday
+- **Green**: Epiphany season (after Epiphany 1), Trinity season
 
 ## Quick Start
 
@@ -72,6 +137,78 @@ dotnet run
 
 Then navigate to `http://localhost:5174` or `https://localhost:7119` in your browser.
 
+### Using the Complete Liturgical Calendar System
+
+```csharp
+using FreiService.Computus;
+using FreiService.Data;
+using FreiService.Data.Repositories;
+using FreiService.Data.Services;
+using Microsoft.EntityFrameworkCore;
+
+// Setup services
+var options = new DbContextOptionsBuilder<HolyDaysContext>()
+    .UseSqlite("Data Source=calendar.db")
+    .Options;
+
+var context = new HolyDaysContext(options);
+await context.Database.EnsureCreatedAsync();
+
+// Initialize services
+var sanctoralRepo = new SanctoralDaysRepository(context);
+var sanctoralService = new SanctoralService(sanctoralRepo);
+var temporalService = new TemporalService();
+var precedenceService = new PrecedenceService(temporalService, sanctoralService);
+
+// Initialize TLH sanctoral calendar
+await sanctoralService.InitializeDefaultSanctoralCalendarAsync();
+
+// Get complete temporal information for a date
+var date = new DateTime(2024, 3, 31); // Easter Sunday
+var temporalDay = temporalService.GetTemporalDay(date);
+
+Console.WriteLine($"Date: {temporalDay.Date:dddd, MMMM d, yyyy}");
+Console.WriteLine($"Season: {temporalDay.Season}");
+Console.WriteLine($"Day Name: {temporalDay.DayName}");
+Console.WriteLine($"Color: {temporalDay.LiturgicalColor}");
+Console.WriteLine($"Rank: {temporalDay.Rank}");
+
+// Resolve precedence for a date with both temporal and sanctoral
+var christmas = new DateTime(2024, 12, 25);
+var resolved = await precedenceService.ResolveDateAsync(christmas);
+
+Console.WriteLine($"\nDate: {resolved.Date:dddd, MMMM d, yyyy}");
+Console.WriteLine($"Primary Observance: {resolved.Primary.Name}");
+Console.WriteLine($"Season: {resolved.Season}");
+Console.WriteLine($"Color: {resolved.LiturgicalColor}");
+
+if (resolved.Commemorations.Any())
+{
+    Console.WriteLine("Commemorations:");
+    foreach (var comm in resolved.Commemorations)
+    {
+        Console.WriteLine($"  - {comm.Name}");
+    }
+}
+
+// Calculate all moveable feasts for a year
+var feasts = temporalService.CalculateAllMoveableFeasts(2024);
+foreach (var (name, feastDate) in feasts.Take(5))
+{
+    Console.WriteLine($"{name}: {feastDate:dddd, MMMM d}");
+}
+
+// Get a range of resolved days (e.g., Holy Week)
+var holyWeekStart = new DateTime(2024, 3, 24);
+var holyWeekEnd = new DateTime(2024, 3, 31);
+var holyWeek = await precedenceService.ResolveDateRangeAsync(holyWeekStart, holyWeekEnd);
+
+foreach (var day in holyWeek)
+{
+    Console.WriteLine($"{day.Date:MM/dd} {day.Primary.Name} ({day.LiturgicalColor})");
+}
+```
+
 ### Using the Computus Service Library
 
 ```csharp
@@ -93,6 +230,34 @@ foreach (var (name, date) in holyDays)
 // Pentecost: Sunday, May 19, 2024
 // Trinity Sunday: Sunday, May 26, 2024
 // Annunciation of Mary: Monday, March 25, 2024
+```
+
+### Using the TemporalService
+
+```csharp
+using FreiService.Computus;
+
+var temporalService = new TemporalService();
+
+// Get all moveable feasts for a year
+var feasts = temporalService.CalculateAllMoveableFeasts(2024);
+Console.WriteLine($"Septuagesima: {feasts["Septuagesima Sunday"]:MMMM d}");
+Console.WriteLine($"Ash Wednesday: {feasts["Ash Wednesday"]:MMMM d}");
+Console.WriteLine($"Easter: {feasts["Easter Sunday"]:MMMM d}");
+
+// Calculate Advent
+var advent1 = temporalService.CalculateAdvent1(2024);
+Console.WriteLine($"Advent 1: {advent1:dddd, MMMM d}");
+
+// Get season information
+var trinitySundays = temporalService.GetTrinitySundayCount(2024);
+var epiphanySundays = temporalService.GetEpiphanySundayCount(2024);
+Console.WriteLine($"Sundays after Trinity: {trinitySundays}");
+Console.WriteLine($"Sundays after Epiphany: {epiphanySundays}");
+
+// Get complete day information
+var day = temporalService.GetTemporalDay(new DateTime(2024, 7, 14));
+Console.WriteLine($"{day.DayName}: {day.Season}, {day.LiturgicalColor}");
 ```
 
 ### Using the Data Service
