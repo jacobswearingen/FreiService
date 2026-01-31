@@ -114,47 +114,41 @@ void get_chapter(struct mg_connection *c, struct mg_http_message *hm) {
     sqlite3_bind_int(stmt, 2, chapter);
 
     char esc_text[1024];
-    char *json = mg_mprintf("{ \"book\": %d, \"chapter\": %d, \"verses\": [", book, chapter);
-    if (!json) {
-        mg_http_reply(c, 500, "", "Out of memory\n");
-        sqlite3_finalize(stmt);
-        sqlite3_close(db);
-        return;
-    }
-    int first = 1;
+    char *json = NULL, *tmp = NULL;
+    int first = 1, error = 0;
 
-    while (sqlite3_step(stmt) == SQLITE_ROW) {
+    json = mg_mprintf("{ \"book\": %d, \"chapter\": %d, \"verses\": [", book, chapter);
+    if (!json) error = 1;
+
+    while (!error && sqlite3_step(stmt) == SQLITE_ROW) {
         int verse = sqlite3_column_int(stmt, 0);
         const unsigned char *text = sqlite3_column_text(stmt, 1);
         json_escape((const char *)text, esc_text, sizeof(esc_text));
-        char *tmp;
-        if (!first) {
-            tmp = mg_mprintf("%s, { \"verse\": %d, \"text\": \"%s\" }", json, verse, esc_text);
-        } else {
-            tmp = mg_mprintf("%s{ \"verse\": %d, \"text\": \"%s\" }", json, verse, esc_text);
-            first = 0;
-        }
+        tmp = mg_mprintf(first ? "%s{ \"verse\": %d, \"text\": \"%s\" }"
+                                 : "%s, { \"verse\": %d, \"text\": \"%s\" }",
+                        json, verse, esc_text);
         free(json);
-        if (!tmp) {
-            mg_http_reply(c, 500, "", "Out of memory\n");
-            sqlite3_finalize(stmt);
-            sqlite3_close(db);
-            return;
-        }
+        if (!tmp) error = 1;
         json = tmp;
+        first = 0;
     }
-    char *final_json = mg_mprintf("%s]}\n", json);
+
+    char *final_json = NULL;
+    if (!error) final_json = mg_mprintf("%s]}\n", json);
     free(json);
 
     sqlite3_finalize(stmt);
     sqlite3_close(db);
 
-    if (first) {
+    if (error || !final_json) {
         if (final_json) free(final_json);
+        mg_http_reply(c, 500, "", "Out of memory\n");
+    } else if (first) {
+        free(final_json);
         mg_http_reply(c, 404, "", "Chapter not found\n");
     } else {
         mg_http_reply(c, 200, "Content-Type: application/json\r\n", "%s", final_json);
-        if (final_json) free(final_json);
+        free(final_json);
     }
 }
 
