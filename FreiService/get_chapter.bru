@@ -1,0 +1,18 @@
+meta {
+  name: get_chapter
+  type: http
+  seq: 2
+}
+
+get {
+  url: 0.0.0.0:8000/kjv/get_chapter
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "book": 19,
+    "chapter": 119
+  }
+}

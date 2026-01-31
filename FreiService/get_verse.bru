@@ -1,0 +1,19 @@
+meta {
+  name: get_verse
+  type: http
+  seq: 1
+}
+
+get {
+  url: 0.0.0.0:8000/kjv/get_verse
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "book": 44,
+    "chapter": 2,
+    "verse": 2
+  }
+}
