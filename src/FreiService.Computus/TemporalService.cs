@@ -11,20 +11,13 @@ public class TemporalService : ComputusService, ITemporalService
     /// </summary>
     public TemporalDay GetTemporalDay(DateTime date)
     {
+        // For most of the year, use the calendar year
         var year = date.Year;
         
-        // Determine which liturgical year we're in (Advent shifts the year)
-        var advent1 = CalculateAdvent1(year);
-        if (date < advent1)
-        {
-            // Check if we're in previous year's Advent
-            var prevAdvent1 = CalculateAdvent1(year - 1);
-            if (date >= prevAdvent1)
-            {
-                year = year - 1;
-            }
-        }
-
+        // But for dates in late December (after Christmas into Advent of next year),
+        // we might need to check the next year
+        // And for early January (still in Christmas season), we use the previous year
+        
         var season = DetermineSeason(date, year);
         var dayName = DetermineDayName(date, year, season);
         var dayType = DetermineDayType(date, dayName);
@@ -118,21 +111,34 @@ public class TemporalService : ComputusService, ITemporalService
 
     /// <summary>
     /// Calculates the first Sunday of Advent (4th Sunday before Christmas).
+    /// Advent 1 is the Sunday falling on or nearest to St. Andrew's Day (Nov 30),
+    /// which is always 4 Sundays before Christmas (between Nov 27 and Dec 3).
     /// </summary>
     public DateTime CalculateAdvent1(int year)
     {
         var christmas = new DateTime(year, 12, 25);
         
-        // Find the 4th Sunday before Christmas
-        // This is the Sunday between Nov 27 and Dec 3
-        var sunday = christmas;
-        while (sunday.DayOfWeek != DayOfWeek.Sunday)
+        // Find the Sunday closest to November 30
+        var stAndrewsDay = new DateTime(year, 11, 30);
+        
+        // Start from St. Andrew's Day and find the nearest Sunday
+        var advent1 = stAndrewsDay;
+        
+        // If St. Andrew's Day is Sunday, that's Advent 1
+        if (advent1.DayOfWeek == DayOfWeek.Sunday)
         {
-            sunday = sunday.AddDays(-1);
+            return advent1;
         }
         
-        // Now we're on the Sunday on or after Christmas, go back 4 weeks
-        return sunday.AddDays(-28);
+        // Otherwise, find the Sunday on or after Nov 27
+        // This ensures Advent 1 is always between Nov 27 and Dec 3
+        advent1 = new DateTime(year, 11, 27);
+        while (advent1.DayOfWeek != DayOfWeek.Sunday)
+        {
+            advent1 = advent1.AddDays(1);
+        }
+        
+        return advent1;
     }
 
     /// <summary>
@@ -166,39 +172,31 @@ public class TemporalService : ComputusService, ITemporalService
     {
         var easter = CalculateEaster(year);
         var christmas = new DateTime(year, 12, 25);
-        var epiphany = CalculateEpiphany(year);
+        var epiphany = new DateTime(year, 1, 6);
         var septuagesima = easter.AddDays(-63);
         var ashWednesday = easter.AddDays(-46);
         var palmSunday = easter.AddDays(-7);
         var pentecost = easter.AddDays(49);
-        var trinity = easter.AddDays(56);
         var advent1 = CalculateAdvent1(year);
 
-        // Check previous year's Christmas if we're in early January
+        // Christmas season: Dec 25 - Jan 5 (of next year)
+        if (date.Month == 12 && date.Day >= 25)
+            return Season.Christmas;
+        
         if (date.Month == 1 && date.Day <= 5)
         {
-            var prevChristmas = new DateTime(year - 1, 12, 25);
-            if (date >= prevChristmas)
-            {
-                return Season.Christmas;
-            }
+            // Early January is still Christmas season from previous year
+            return Season.Christmas;
         }
-
-        // Check next year's Advent if we're late in the year
+        
+        // Advent season must come after checking Christmas
+        // Check both current year and possibly previous year for Advent
         if (date.Month >= 11)
         {
-            var nextAdvent1 = CalculateAdvent1(year + 1);
-            if (date >= nextAdvent1)
-            {
+            // Late in the year - check if we're in Advent
+            if (date >= advent1 && date < christmas)
                 return Season.Advent;
-            }
         }
-
-        if (date >= advent1 && date < christmas)
-            return Season.Advent;
-        
-        if (date >= christmas && date.Month == 12)
-            return Season.Christmas;
         
         if (date >= epiphany && date < septuagesima)
             return Season.Epiphany;
@@ -215,7 +213,8 @@ public class TemporalService : ComputusService, ITemporalService
         if (date >= easter && date < pentecost)
             return Season.Easter;
         
-        if (date >= pentecost)
+        // After Pentecost until Advent
+        if (date >= pentecost && date < advent1)
             return Season.Trinity;
 
         return Season.Trinity; // Default
