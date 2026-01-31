@@ -14,6 +14,18 @@ public class HolyDaysService : IHolyDaysService
     private readonly IHolyDayDefinitionsRepository _definitionsRepository;
 
     /// <summary>
+    /// Names of built-in holy days that are static (fixed dates).
+    /// </summary>
+    private static readonly HashSet<string> StaticHolyDayNames = new()
+    {
+        "Annunciation of Mary",
+        "Christmas",
+        "Epiphany",
+        "Reformation Day",
+        "All Saints' Day"
+    };
+
+    /// <summary>
     /// Initializes a new instance of the HolyDaysService class.
     /// </summary>
     /// <param name="computusService">The Computus service for calculating dates.</param>
@@ -49,23 +61,13 @@ public class HolyDaysService : IHolyDaysService
         // Calculate the holy days
         var calculatedHolyDays = _computusService.CalculateAllHolyDays(year);
 
-        // Define which holy days are static vs sanctoral
-        var staticHolyDays = new HashSet<string>
-        {
-            "Annunciation of Mary",
-            "Christmas",
-            "Epiphany",
-            "Reformation Day",
-            "All Saints' Day"
-        };
-
         // Convert to database entities
         var holyDays = calculatedHolyDays.Select(kvp => new HolyDay
         {
             Name = kvp.Key,
             Year = year,
             Date = kvp.Value,
-            Type = staticHolyDays.Contains(kvp.Key) ? HolyDayType.Static : HolyDayType.Sanctoral
+            Type = StaticHolyDayNames.Contains(kvp.Key) ? HolyDayType.Static : HolyDayType.Sanctoral
         }).ToList();
 
         // Save to database
@@ -124,23 +126,13 @@ public class HolyDaysService : IHolyDaysService
         // Calculate the built-in holy days
         var calculatedHolyDays = _computusService.CalculateAllHolyDays(year);
 
-        // Define which holy days are static vs sanctoral
-        var staticHolyDays = new HashSet<string>
-        {
-            "Annunciation of Mary",
-            "Christmas",
-            "Epiphany",
-            "Reformation Day",
-            "All Saints' Day"
-        };
-
         // Convert to database entities
         var holyDays = calculatedHolyDays.Select(kvp => new HolyDay
         {
             Name = kvp.Key,
             Year = year,
             Date = kvp.Value,
-            Type = staticHolyDays.Contains(kvp.Key) ? HolyDayType.Static : HolyDayType.Sanctoral
+            Type = StaticHolyDayNames.Contains(kvp.Key) ? HolyDayType.Static : HolyDayType.Sanctoral
         }).ToList();
 
         // Add custom holy days if requested
