@@ -8,8 +8,9 @@ struct route {
 };
 
 static struct route routes[] = {
-    {"/kjv/*/*/*", route_kjv},
-    // Add more routes here
+    {"/kjv/get_verse", get_verse},
+    {"/kjv/get_chapter", get_chapter},
+    {"/kjv/get_passage", get_passage},
 };
 
 void route_request(struct mg_connection *c, struct mg_http_message *hm) {
