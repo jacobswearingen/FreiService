@@ -19,6 +19,7 @@ builder.Services.AddDbContext<HolyDaysContext>(options =>
 // Register services
 builder.Services.AddScoped<IComputusService, ComputusService>();
 builder.Services.AddScoped<IHolyDaysRepository, HolyDaysRepository>();
+builder.Services.AddScoped<IHolyDayDefinitionsRepository, HolyDayDefinitionsRepository>();
 builder.Services.AddScoped<IHolyDaysService, HolyDaysService>();
 
 var app = builder.Build();
@@ -27,6 +28,13 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<HolyDaysContext>();
+    
+    // In development, recreate the database to handle schema changes
+    if (app.Environment.IsDevelopment())
+    {
+        dbContext.Database.EnsureDeleted();
+    }
+    
     dbContext.Database.EnsureCreated();
 }
 
