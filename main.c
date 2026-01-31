@@ -1,10 +1,10 @@
 #include "mongoose.h"
 #include <sqlite3.h>
 #include <stdio.h>
-#include <stdlib.h>
 
 
 #define DB_PATH "db.db"
+
 
 
 static void handle_verse(struct mg_connection *c, struct mg_http_message *hm, int book, int chapter, int verse) {
@@ -46,26 +46,51 @@ static void handle_verse(struct mg_connection *c, struct mg_http_message *hm, in
     sqlite3_close(db);
 }
 
+// Route handler for /kjv/{book}/{chapter}/{verse}
+static void route_kjv(struct mg_connection *c, struct mg_http_message *hm) {
+    int book, chapter, verse;
+    char path[64];
+    snprintf(path, sizeof(path), "%.*s", (int)hm->uri.len, hm->uri.buf);
+    int n = sscanf(path, "/kjv/%d/%d/%d", &book, &chapter, &verse);
+    if (n == 3) {
+        handle_verse(c, hm, book, chapter, verse);
+    } else {
+        mg_http_reply(c, 400, "", "Invalid path\n");
+    }
+}
+
+// Route handler for /routes (shows all available routes)
+static void route_list(struct mg_connection *c, struct mg_http_message *hm) {
+    mg_http_reply(c, 200, "Content-Type: text/plain\r\n",
+        "Available routes:\n"
+        "/kjv/{book}/{chapter}/{verse}\n"
+        "/routes\n"
+    );
+}
+
+struct route {
+    const char *pattern;
+    void (*handler)(struct mg_connection *, struct mg_http_message *);
+};
+
+static struct route routes[] = {
+    {"/kjv/*/*/*", route_kjv},
+    {"/routes", route_list},
+    // Add more routes here
+};
+
+
 static void fn(struct mg_connection *c, int ev, void *ev_data) {
     if (ev == MG_EV_HTTP_MSG) {
         struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-        // Match /verse/{book}/{chapter}/{verse}
-        int book, chapter, verse;
-        if (mg_match(hm->uri, mg_str("/kjv/*/*/*"), NULL)) {
-            // Parse path variables
-            // Extract the path after /verse/
-            char path[64];
-            snprintf(path, sizeof(path), "%.*s", (int)hm->uri.len, hm->uri.buf);
-            // path is now like /kjv/43/1/1
-            int n = sscanf(path, "/kjv/%d/%d/%d", &book, &chapter, &verse);
-            if (n == 3) {
-                handle_verse(c, hm, book, chapter, verse);
-            } else {
-                mg_http_reply(c, 400, "", "Invalid path\n");
+        size_t i;
+        for (i = 0; i < sizeof(routes)/sizeof(routes[0]); ++i) {
+            if (mg_match(hm->uri, mg_str(routes[i].pattern), NULL)) {
+                routes[i].handler(c, hm);
+                return;
             }
-        } else {
-            mg_http_reply(c, 404, "", "Not found\n");
         }
+        mg_http_reply(c, 404, "", "Not found\n");
     }
 }
 
