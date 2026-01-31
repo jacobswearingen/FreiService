@@ -28,6 +28,13 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<HolyDaysContext>();
+    
+    // In development, recreate the database to handle schema changes
+    if (app.Environment.IsDevelopment())
+    {
+        dbContext.Database.EnsureDeleted();
+    }
+    
     dbContext.Database.EnsureCreated();
 }
 
