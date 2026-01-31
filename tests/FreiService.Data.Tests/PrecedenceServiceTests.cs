@@ -208,7 +208,6 @@ public class PrecedenceServiceTests
         // Assert
         Assert.Equal(CalendarSource.Temporal, resolved.Primary.Source);
         Assert.Contains("Trinity", resolved.Primary.Name);
-        Assert.Equal(DayType.Sunday, DayType.Sunday); // It's a Sunday
     }
 
     [Fact]
