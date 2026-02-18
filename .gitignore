@@ -1,0 +1,5 @@
+rest-example.c
+.vscode/
+*.o
+server
+compile_flags.txt
