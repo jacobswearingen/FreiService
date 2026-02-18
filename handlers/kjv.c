@@ -1,7 +1,4 @@
-#include <string.h>
 #include "mongoose.h"
-
-
 #include "kjv.h"
 #include <sqlite3.h>
 
