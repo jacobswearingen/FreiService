@@ -29,10 +29,8 @@ char *query_verse_json(int book, int chapter, int verse) {
     sqlite3_bind_int(stmt, 3, verse);
     if (sqlite3_step(stmt) == SQLITE_ROW) {
         const unsigned char *text = sqlite3_column_text(stmt, 0);
-        char esc_text[1024];
-        mg_url_encode((const char *)text, strlen((const char *)text), esc_text, sizeof(esc_text));
-        result = mg_mprintf("{ \"book\": %d, \"chapter\": %d, \"verse\": %d, \"text\": \"%s\" }\n",
-            book, chapter, verse, esc_text);
+        result = mg_mprintf("{ \"book\": %d, \"chapter\": %d, \"verse\": %d, \"text\": %m }\n",
+            book, chapter, verse, MG_ESC((const char *)text));
     }
     sqlite3_finalize(stmt);
     sqlite3_close(db);
@@ -80,14 +78,12 @@ char *query_chapter_json(int book, int chapter) {
     sqlite3_bind_int(stmt, 2, chapter);
     json = mg_mprintf("{ \"book\": %d, \"chapter\": %d, \"verses\": [", book, chapter);
     if (!json) error = 1;
-    char esc_text[1024];
     while (!error && sqlite3_step(stmt) == SQLITE_ROW) {
         int verse = sqlite3_column_int(stmt, 0);
         const unsigned char *text = sqlite3_column_text(stmt, 1);
-        mg_url_encode((const char *)text, strlen((const char *)text), esc_text, sizeof(esc_text));
-        tmp = mg_mprintf(first ? "%s{ \"verse\": %d, \"text\": \"%s\" }"
-                                 : "%s, { \"verse\": %d, \"text\": \"%s\" }",
-                        json, verse, esc_text);
+        tmp = mg_mprintf(first ? "%s{ \"verse\": %d, \"text\": %m }"
+                                 : "%s, { \"verse\": %d, \"text\": %m }",
+                        json, verse, MG_ESC((const char *)text));
         free(json);
         if (!tmp) error = 1;
         json = tmp;
@@ -148,15 +144,13 @@ char *query_passage_json(int book, int start_chapter, int start_verse, int end_c
     sqlite3_bind_int(stmt, 7, end_verse);
     json = mg_mprintf("{ \"book\": %d, \"start_chapter\": %d, \"start_verse\": %d, \"end_chapter\": %d, \"end_verse\": %d, \"verses\": [", book, start_chapter, start_verse, end_chapter, end_verse);
     if (!json) error = 1;
-    char esc_text[1024];
     while (!error && sqlite3_step(stmt) == SQLITE_ROW) {
         int chapter = sqlite3_column_int(stmt, 0);
         int verse = sqlite3_column_int(stmt, 1);
         const unsigned char *text = sqlite3_column_text(stmt, 2);
-        mg_url_encode((const char *)text, strlen((const char *)text), esc_text, sizeof(esc_text));
-        tmp = mg_mprintf(first ? "%s{ \"chapter\": %d, \"verse\": %d, \"text\": \"%s\" }"
-                                 : "%s, { \"chapter\": %d, \"verse\": %d, \"text\": \"%s\" }",
-                        json, chapter, verse, esc_text);
+        tmp = mg_mprintf(first ? "%s{ \"chapter\": %d, \"verse\": %d, \"text\": %m }"
+                                 : "%s, { \"chapter\": %d, \"verse\": %d, \"text\": %m }",
+                        json, chapter, verse, MG_ESC((const char *)text));
         free(json);
         if (!tmp) error = 1;
         json = tmp;
