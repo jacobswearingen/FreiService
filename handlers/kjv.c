@@ -1,6 +1,7 @@
 #include "mongoose.h"
 #include "kjv.h"
 #include <sqlite3.h>
+#include "cJSON.h"
 
 #define DB_PATH "db.db"
 
@@ -121,8 +122,7 @@ char *query_passage_json(int book, int start_chapter, int start_verse, int end_c
     sqlite3 *db;
     sqlite3_stmt *stmt;
     int rc;
-    char *json = NULL, *tmp = NULL;
-    int first = 1, error = 0;
+    char *json_str = NULL;
     rc = sqlite3_open(DB_PATH, &db);
     if (rc != SQLITE_OK) return NULL;
     mg_snprintf(sql, sizeof(sql),
@@ -139,28 +139,49 @@ char *query_passage_json(int book, int start_chapter, int start_verse, int end_c
     sqlite3_bind_int(stmt, 5, end_chapter);
     sqlite3_bind_int(stmt, 6, end_chapter);
     sqlite3_bind_int(stmt, 7, end_verse);
-    json = mg_mprintf("{ \"book\": %d, \"start_chapter\": %d, \"start_verse\": %d, \"end_chapter\": %d, \"end_verse\": %d, \"verses\": [", book, start_chapter, start_verse, end_chapter, end_verse);
-    if (!json) error = 1;
-    while (!error && sqlite3_step(stmt) == SQLITE_ROW) {
+
+    cJSON *root = cJSON_CreateObject();
+    if (!root) {
+        sqlite3_finalize(stmt);
+        sqlite3_close(db);
+        return NULL;
+    }
+    cJSON_AddNumberToObject(root, "book", book);
+    cJSON_AddNumberToObject(root, "start_chapter", start_chapter);
+    cJSON_AddNumberToObject(root, "start_verse", start_verse);
+    cJSON_AddNumberToObject(root, "end_chapter", end_chapter);
+    cJSON_AddNumberToObject(root, "end_verse", end_verse);
+    cJSON *verses = cJSON_CreateArray();
+    if (!verses) {
+        cJSON_Delete(root);
+        sqlite3_finalize(stmt);
+        sqlite3_close(db);
+        return NULL;
+    }
+
+    int found = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
         int chapter = sqlite3_column_int(stmt, 0);
         int verse = sqlite3_column_int(stmt, 1);
         const unsigned char *text = sqlite3_column_text(stmt, 2);
-        tmp = mg_mprintf(first ? "%s{ \"chapter\": %d, \"verse\": %d, \"text\": %m }"
-                                 : "%s, { \"chapter\": %d, \"verse\": %d, \"text\": %m }",
-                        json, chapter, verse, MG_ESC((const char *)text));
-        free(json);
-        if (!tmp) error = 1;
-        json = tmp;
-        first = 0;
+        cJSON *vobj = cJSON_CreateObject();
+        if (!vobj) continue;
+        cJSON_AddNumberToObject(vobj, "chapter", chapter);
+        cJSON_AddNumberToObject(vobj, "verse", verse);
+        cJSON_AddStringToObject(vobj, "text", (const char *)text);
+        cJSON_AddItemToArray(verses, vobj);
+        found = 1;
     }
-    char *final_json = NULL;
-    if (!error) final_json = mg_mprintf("%s]}\n", json);
-    free(json);
+    cJSON_AddItemToObject(root, "verses", verses);
     sqlite3_finalize(stmt);
     sqlite3_close(db);
-    if (error && final_json) { free(final_json); final_json = NULL; }
-    if (first && final_json) { free(final_json); final_json = NULL; }
-    return final_json;
+    if (!found) {
+        cJSON_Delete(root);
+        return NULL;
+    }
+    json_str = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    return json_str;
 }
 
 void get_passage(struct mg_connection *c, struct mg_http_message *hm) {
