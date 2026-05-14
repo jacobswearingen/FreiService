@@ -40,10 +40,8 @@ pub async fn get_chapter(req: web::Json<ChapterRequest>) -> HttpResponse {
     let mut verses = Vec::new();
     match verses_iter {
         Ok(iter) => {
-            for verse in iter {
-                if let Ok(v) = verse {
-                    verses.push(v);
-                }
+            for v in iter.flatten() {
+                verses.push(v);
             }
             if verses.is_empty() {
                 return HttpResponse::NotFound().body("Chapter not found");
