@@ -1,4 +1,3 @@
-rest-example.c
 .vscode/
-*.o
-server
+cargo_build.log
+target/
