@@ -1,6 +1,4 @@
 use actix_web::{App, HttpServer};
-mod get_chapter;
-mod get_passage;
 mod handlers;
 mod router;
 
