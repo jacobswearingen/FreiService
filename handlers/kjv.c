@@ -150,12 +150,12 @@ char *query_passage_json(sqlite3 *db, int book, int start_chapter, int start_ver
     static const char *sql =
         "SELECT chapter, verse, text FROM kjv WHERE book=? AND ((chapter > ? OR (chapter = ? AND verse >= ?)) AND (chapter < ? OR (chapter = ? AND verse <= ?))) ORDER BY chapter ASC, verse ASC";
     sqlite3_stmt *stmt = NULL;
-    int rc;
-    char *json_str = NULL;
-    cJSON *root = NULL, *verses = NULL;
+    struct mg_iobuf buf = {0};
+    mg_iobuf_resize(&buf, 8192);
+    char *result = NULL;
+    int count = 0;
 
-    rc = prepare_stmt(db, &stmt, sql);
-    if (rc != SQLITE_OK) goto cleanup;
+    if (prepare_stmt(db, &stmt, sql) != SQLITE_OK) goto cleanup;
 
     sqlite3_bind_int(stmt, 1, book);
     sqlite3_bind_int(stmt, 2, start_chapter);
@@ -165,37 +165,28 @@ char *query_passage_json(sqlite3 *db, int book, int start_chapter, int start_ver
     sqlite3_bind_int(stmt, 6, end_chapter);
     sqlite3_bind_int(stmt, 7, end_verse);
 
-    root = cJSON_CreateObject();
-    if (!root) goto cleanup;
-    cJSON_AddNumberToObject(root, "book", book);
-    cJSON_AddNumberToObject(root, "start_chapter", start_chapter);
-    cJSON_AddNumberToObject(root, "start_verse", start_verse);
-    cJSON_AddNumberToObject(root, "end_chapter", end_chapter);
-    cJSON_AddNumberToObject(root, "end_verse", end_verse);
-    verses = cJSON_CreateArray();
-    if (!verses) goto cleanup;
-
     while (sqlite3_step(stmt) == SQLITE_ROW) {
         int chapter = sqlite3_column_int(stmt, 0);
         int verse = sqlite3_column_int(stmt, 1);
         const unsigned char *text = sqlite3_column_text(stmt, 2);
-        cJSON *vobj = cJSON_CreateObject();
-        if (!vobj) continue;
-        cJSON_AddNumberToObject(vobj, "chapter", chapter);
-        cJSON_AddNumberToObject(vobj, "verse", verse);
-        cJSON_AddStringToObject(vobj, "text", (const char *)text);
-        cJSON_AddItemToArray(verses, vobj);
-    }
-    if (cJSON_GetArraySize(verses) == 0) goto cleanup;
-    cJSON_AddItemToObject(root, "verses", verses);
-    verses = NULL;  // Ownership transferred to root
-    json_str = cJSON_PrintUnformatted(root);
+        char *piece = mg_mprintf("%s{%m:%d,%m:%d,%m:%m}",
+            count++ > 0 ? "," : "",
+            MG_ESC("chapter"), chapter,
+            MG_ESC("verse"), verse,
+            MG_ESC("text"), MG_ESC(text));
+        mg_iobuf_add(&buf, buf.len, piece, strlen(piece));
+        free(piece);
+    }   
+    if (count > 0)
+        result = mg_mprintf("{%m:%d,%m:%d,%m:[%.*s]}",
+            MG_ESC("book"),    book,
+            MG_ESC("chapter"), start_chapter,
+            MG_ESC("verses"),  (int)buf.len, buf.buf);
 
 cleanup:
     if (stmt) sqlite3_finalize(stmt);
-    if (verses) cJSON_Delete(verses);
-    if (root) cJSON_Delete(root);
-    return json_str;
+    mg_iobuf_free(&buf);
+    return result;
 }
 
 void get_passage(struct mg_connection *c, struct mg_http_message *hm, sqlite3 *db) {

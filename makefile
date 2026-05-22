@@ -1,4 +1,4 @@
-CC      = gcc
+CC      = clang
 CFLAGS  = -std=gnu99 -Wall -Wextra -O2 -Ilib/mongoose -Ilib/cJSON -Ihandlers
 LDFLAGS = -pthread -lsqlite3
 
