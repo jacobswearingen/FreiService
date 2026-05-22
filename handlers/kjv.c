@@ -1,25 +1,35 @@
 #include "mongoose.h"
 #include "kjv.h"
 #include <sqlite3.h>
+#include <stdio.h>
 #include "cJSON.h"
 
-#define DB_PATH "db.db"
+static int prepare_stmt(sqlite3 *db, sqlite3_stmt **stmt, const char *sql) {
+    int rc = sqlite3_prepare_v2(db, sql, -1, stmt, 0);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "sqlite3_prepare_v2 failed: %s\n", sqlite3_errmsg(db));
+    }
+    return rc;
+}
+
+static int is_post_request(const struct mg_http_message *hm) {
+    return mg_strcmp(hm->method, mg_str("POST")) == 0;
+}
+
+static int is_valid_reference(int book, int chapter, int verse) {
+    return book >= 1 && book <= 66 && chapter >= 1 && verse >= 1;
+}
 
 
 // Returns a malloc'd JSON string for the verse, or NULL if not found or error. Caller must free.
-char *query_verse_json(int book, int chapter, int verse) {
-    char sql[256];
-    sqlite3 *db = NULL;
+char *query_verse_json(sqlite3 *db, int book, int chapter, int verse) {
+    static const char *sql =
+        "SELECT text FROM kjv WHERE book=? AND chapter=? AND verse=?";
     sqlite3_stmt *stmt = NULL;
     char *json_str = NULL;
     int rc;
 
-    rc = sqlite3_open(DB_PATH, &db);
-    if (rc != SQLITE_OK) goto cleanup;
-
-    mg_snprintf(sql, sizeof(sql),
-        "SELECT text FROM kjv WHERE book=? AND chapter=? AND verse=?");
-    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, 0);
+    rc = prepare_stmt(db, &stmt, sql);
     if (rc != SQLITE_OK) goto cleanup;
 
     sqlite3_bind_int(stmt, 1, book);
@@ -41,11 +51,15 @@ char *query_verse_json(int book, int chapter, int verse) {
 
 cleanup:
     if (stmt) sqlite3_finalize(stmt);
-    if (db) sqlite3_close(db);
     return json_str;
 }
 
-void get_verse(struct mg_connection *c, struct mg_http_message *hm) {
+void get_verse(struct mg_connection *c, struct mg_http_message *hm, sqlite3 *db) {
+    if (!is_post_request(hm)) {
+        mg_http_reply(c, 405, "Allow: POST\r\n", "Method not allowed\n");
+        return;
+    }
+
     // Parse JSON body: expect {"book":1, "chapter":1, "verse":1}
     double dbook = 0, dchapter = 0, dverse = 0;
     if (!mg_json_get_num(hm->body, "$.book", &dbook) ||
@@ -55,7 +69,12 @@ void get_verse(struct mg_connection *c, struct mg_http_message *hm) {
         return;
     }
     int book = (int)dbook, chapter = (int)dchapter, verse = (int)dverse;
-    char *json = query_verse_json(book, chapter, verse);
+    if (!is_valid_reference(book, chapter, verse)) {
+        mg_http_reply(c, 400, "", "Invalid reference range\n");
+        return;
+    }
+
+    char *json = query_verse_json(db, book, chapter, verse);
     if (json) {
         mg_http_reply(c, 200, "Content-Type: application/json\r\n", "%s", json);
         free(json);
@@ -64,54 +83,47 @@ void get_verse(struct mg_connection *c, struct mg_http_message *hm) {
     }
 }
 
-
-// Returns a malloc'd JSON string for the chapter, or NULL if not found or error. Caller must free.
-char *query_chapter_json(int book, int chapter) {
-    char sql[256];
-    sqlite3 *db = NULL;
+char *query_chapter_json(sqlite3 *db, int book, int chapter) {
+    static const char *sql =
+        "SELECT verse, text FROM kjv WHERE book=? AND chapter=? ORDER BY verse ASC";
     sqlite3_stmt *stmt = NULL;
-    int rc;
-    char *json_str = NULL;
-    cJSON *root = NULL, *verses = NULL;
+    struct mg_iobuf buf = {0};
+    char *result = NULL;
+    int count = 0;
 
-    rc = sqlite3_open(DB_PATH, &db);
-    if (rc != SQLITE_OK) goto cleanup;
-    mg_snprintf(sql, sizeof(sql),
-        "SELECT verse, text FROM kjv WHERE book=? AND chapter=? ORDER BY verse ASC");
-    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, 0);
-    if (rc != SQLITE_OK) goto cleanup;
+    if (prepare_stmt(db, &stmt, sql) != SQLITE_OK) goto cleanup;
     sqlite3_bind_int(stmt, 1, book);
     sqlite3_bind_int(stmt, 2, chapter);
 
-    root = cJSON_CreateObject();
-    if (!root) goto cleanup;
-    cJSON_AddNumberToObject(root, "book", book);
-    cJSON_AddNumberToObject(root, "chapter", chapter);
-    verses = cJSON_CreateArray();
-    if (!verses) goto cleanup;
-
     while (sqlite3_step(stmt) == SQLITE_ROW) {
         int verse = sqlite3_column_int(stmt, 0);
-        const unsigned char *text = sqlite3_column_text(stmt, 1);
-        cJSON *vobj = cJSON_CreateObject();
-        if (!vobj) continue;
-        cJSON_AddNumberToObject(vobj, "verse", verse);
-        cJSON_AddStringToObject(vobj, "text", (const char *)text);
-        cJSON_AddItemToArray(verses, vobj);
+        const char *text = (const char *)sqlite3_column_text(stmt, 1);
+        char *piece = mg_mprintf("%s{%m:%d,%m:%m}",
+            count++ > 0 ? "," : "",
+            MG_ESC("verse"), verse,
+            MG_ESC("text"), MG_ESC(text));
+        mg_iobuf_add(&buf, buf.len, piece, strlen(piece));
+        free(piece);
     }
-    cJSON_AddItemToObject(root, "verses", verses);
-    if (cJSON_GetArraySize(verses) == 0) goto cleanup;
-    json_str = cJSON_PrintUnformatted(root);
+
+    if (count > 0)
+        result = mg_mprintf("{%m:%d,%m:%d,%m:[%.*s]}",
+            MG_ESC("book"),    book,
+            MG_ESC("chapter"), chapter,
+            MG_ESC("verses"),  (int)buf.len, buf.buf);
 
 cleanup:
     if (stmt) sqlite3_finalize(stmt);
-    if (db) sqlite3_close(db);
-    if (root) cJSON_Delete(root);
-    return json_str;
+    mg_iobuf_free(&buf);
+    return result;
 }
 
-void get_chapter(struct mg_connection *c, struct mg_http_message *hm) {
-    // Parse JSON body: expect {"book":1, "chapter":1}
+void get_chapter(struct mg_connection *c, struct mg_http_message *hm, sqlite3 *db) {
+    if (!is_post_request(hm)) {
+        mg_http_reply(c, 405, "Allow: POST\r\n", "Method not allowed\n");
+        return;
+    }
+
     double dbook = 0, dchapter = 0;
     if (!mg_json_get_num(hm->body, "$.book", &dbook) ||
         !mg_json_get_num(hm->body, "$.chapter", &dchapter)) {
@@ -119,7 +131,11 @@ void get_chapter(struct mg_connection *c, struct mg_http_message *hm) {
         return;
     }
     int book = (int)dbook, chapter = (int)dchapter;
-    char *json = query_chapter_json(book, chapter);
+    if (!is_valid_reference(book, chapter, 1)) {
+        mg_http_reply(c, 400, "", "Invalid reference range\n");
+        return;
+    }
+    char *json = query_chapter_json(db, book, chapter);
     if (json) {
         mg_http_reply(c, 200, "Content-Type: application/json\r\n", "%s", json);
         free(json);
@@ -130,20 +146,17 @@ void get_chapter(struct mg_connection *c, struct mg_http_message *hm) {
 
 
 // Returns a malloc'd JSON string for the passage, or NULL if not found or error. Caller must free.
-char *query_passage_json(int book, int start_chapter, int start_verse, int end_chapter, int end_verse) {
-    char sql[512];
-    sqlite3 *db = NULL;
+char *query_passage_json(sqlite3 *db, int book, int start_chapter, int start_verse, int end_chapter, int end_verse) {
+    static const char *sql =
+        "SELECT chapter, verse, text FROM kjv WHERE book=? AND ((chapter > ? OR (chapter = ? AND verse >= ?)) AND (chapter < ? OR (chapter = ? AND verse <= ?))) ORDER BY chapter ASC, verse ASC";
     sqlite3_stmt *stmt = NULL;
     int rc;
     char *json_str = NULL;
     cJSON *root = NULL, *verses = NULL;
 
-    rc = sqlite3_open(DB_PATH, &db);
+    rc = prepare_stmt(db, &stmt, sql);
     if (rc != SQLITE_OK) goto cleanup;
-    mg_snprintf(sql, sizeof(sql),
-        "SELECT chapter, verse, text FROM kjv WHERE book=? AND ((chapter > ? OR (chapter = ? AND verse >= ?)) AND (chapter < ? OR (chapter = ? AND verse <= ?))) ORDER BY chapter ASC, verse ASC");
-    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, 0);
-    if (rc != SQLITE_OK) goto cleanup;
+
     sqlite3_bind_int(stmt, 1, book);
     sqlite3_bind_int(stmt, 2, start_chapter);
     sqlite3_bind_int(stmt, 3, start_chapter);
@@ -173,18 +186,24 @@ char *query_passage_json(int book, int start_chapter, int start_verse, int end_c
         cJSON_AddStringToObject(vobj, "text", (const char *)text);
         cJSON_AddItemToArray(verses, vobj);
     }
-    cJSON_AddItemToObject(root, "verses", verses);
     if (cJSON_GetArraySize(verses) == 0) goto cleanup;
+    cJSON_AddItemToObject(root, "verses", verses);
+    verses = NULL;  // Ownership transferred to root
     json_str = cJSON_PrintUnformatted(root);
 
 cleanup:
     if (stmt) sqlite3_finalize(stmt);
-    if (db) sqlite3_close(db);
+    if (verses) cJSON_Delete(verses);
     if (root) cJSON_Delete(root);
     return json_str;
 }
 
-void get_passage(struct mg_connection *c, struct mg_http_message *hm) {
+void get_passage(struct mg_connection *c, struct mg_http_message *hm, sqlite3 *db) {
+    if (!is_post_request(hm)) {
+        mg_http_reply(c, 405, "Allow: POST\r\n", "Method not allowed\n");
+        return;
+    }
+
     // Parse JSON body: expect {"book":1, "start_chapter":1, "start_verse":1, "end_chapter":1, "end_verse":1}
     double dbook = 0, dstart_ch = 0, dstart_vs = 0, dend_ch = 0, dend_vs = 0;
     if (!mg_json_get_num(hm->body, "$.book", &dbook) ||
@@ -196,7 +215,15 @@ void get_passage(struct mg_connection *c, struct mg_http_message *hm) {
         return;
     }
     int book = (int)dbook, start_chapter = (int)dstart_ch, start_verse = (int)dstart_vs, end_chapter = (int)dend_ch, end_verse = (int)dend_vs;
-    char *json = query_passage_json(book, start_chapter, start_verse, end_chapter, end_verse);
+    if (!is_valid_reference(book, start_chapter, start_verse) ||
+        !is_valid_reference(book, end_chapter, end_verse) ||
+        start_chapter > end_chapter ||
+        (start_chapter == end_chapter && start_verse > end_verse)) {
+        mg_http_reply(c, 400, "", "Invalid reference range\n");
+        return;
+    }
+
+    char *json = query_passage_json(db, book, start_chapter, start_verse, end_chapter, end_verse);
     if (json) {
         mg_http_reply(c, 200, "Content-Type: application/json\r\n", "%s", json);
         free(json);

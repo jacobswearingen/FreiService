@@ -12,3 +12,6 @@ $(BIN): $(SRC)
 
 clean:
 	$(RM) $(BIN)
+
+sanitize:
+	clang $(CFLAGS) -Wall -Wextra -Wpedantic -Werror -fsanitize=address,undefined -g -o server $(SRC) $(LDFLAGS)
