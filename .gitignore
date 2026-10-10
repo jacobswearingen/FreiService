@@ -1,4 +1,4 @@
-rest-example.c
 .vscode/
 *.o
 server
+*.test
